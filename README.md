@@ -10,170 +10,164 @@
 
 ## 📌 Abstract
 
-Signature-based detection systems often fail against modern obfuscation techniques.  
-This research evaluates four ensemble learning algorithms for **static malware detection**
-using only **Portable Executable (PE) header metadata**.
-
-Although all models achieve >99.6% accuracy, we demonstrate that they are highly
-vulnerable to **adversarial mimicry attacks**, where malware copies benign metadata
-to bypass detection. This exposes a critical limitation of metadata-based static analysis.
+Signature-based detection systems often fail against modern obfuscation techniques. This research evaluates four ensemble learning algorithms for static malware detection using only Portable Executable (PE) header metadata. Although all models achieve over 99.6% accuracy, we demonstrate that they are highly vulnerable to adversarial mimicry attacks, where malware copies benign metadata to bypass detection. This exposes a critical limitation of metadata-based static analysis.
 
 ---
 
 ## 🎯 Research Objectives
 
-- Compare ensemble learning models on PE metadata
-- Analyze operational trade-offs (False Positives vs False Negatives)
-- Investigate feature importance concentration
-- Test robustness using adversarial header manipulation
+- Compare ensemble learning models on PE metadata  
+- Analyze operational trade-offs (False Positives vs False Negatives)  
+- Investigate feature importance concentration and greedy learning behavior  
+- Test robustness using adversarial PE header manipulation  
 
 ---
 
 ## 🧪 Models Evaluated
 
-| Algorithm | Paradigm |
-|--------|--------|
-| Random Forest | Bagging |
-| XGBoost | Boosting |
-| LightGBM | Boosting |
-| Histogram Gradient Boosting | Boosting |
+Random Forest (Bagging)  
+XGBoost (Boosting)  
+LightGBM (Boosting)  
+Histogram Gradient Boosting (Boosting)
 
 ---
 
 ## 📊 Dataset
 
-- **Total samples:** 34,054 Windows PE executables  
-- **Benign:** 18,626  
-- **Malware:** 15,428  
-- **Features:** 54 PE header attributes  
-- **Extraction:** `pefile` Python library  
-- **Split:** 80% Train / 20% Test  
+Total samples: 34,054 Windows PE executables  
+Benign: 18,626  
+Malware: 15,428  
+Features: 54 PE header attributes  
+Extraction tool: pefile (Python)  
+Split: 80% Training / 20% Testing  
 
-### Feature Categories
-
-- Linker versions
-- OS versions
-- Entry point
-- Image base
-- Section alignment
-- Checksum
-- Structural header values
+Feature categories include linker versions, OS versions, entry point, image base, section alignment, checksum, and structural header attributes.
 
 ---
 
 ## ⚙️ Experimental Setup
 
-- Libraries:
-  - `scikit-learn`
-  - `xgboost`
-  - `lightgbm`
-  - `pefile`
-- Metrics:
-  - Accuracy
-  - Precision
-  - Recall
-  - False Positives (FP)
-  - False Negatives (FN)
-- Feature importance analysis performed for all models
+Libraries used:  
+- scikit-learn  
+- xgboost  
+- lightgbm  
+- pefile  
+
+Evaluation metrics:  
+- Accuracy  
+- Precision  
+- Recall  
+- False Positives (FP)  
+- False Negatives (FN)  
+
+Feature importance was analyzed for all trained models.
 
 ---
 
 ## ✅ Results Summary
 
-All models exceed **99.6% accuracy** on clean test data.
+All models achieved very high benchmark performance (>99.6% accuracy):
 
-| Model | Accuracy | FP | FN |
-|--------|--------|----|----|
-| HistGradientBoosting | **99.80%** | **6** | 8 |
-| XGBoost | 99.78% | 8 | 7 |
-| LightGBM | 99.75% | 7 | 10 |
-| Random Forest | 99.65% | 19 | **5** |
+HistGradientBoosting — Accuracy: 99.80%, FP: 6, FN: 8  
+XGBoost — Accuracy: 99.78%, FP: 8, FN: 7  
+LightGBM — Accuracy: 99.75%, FP: 7, FN: 10  
+Random Forest — Accuracy: 99.65%, FP: 19, FN: 5  
 
-### Operational Insights
-
-- **HistGradientBoosting** → best for user-facing systems (lowest FP)
-- **Random Forest** → best for backend detection (lowest FN)
+Operational interpretation:  
+HistGradientBoosting is best suited for user-facing systems due to lowest false positives, while Random Forest is better suited for backend security due to lowest false negatives.
 
 ---
 
-## ⚠️ Feature Importance Risk
+## ⚠️ Feature Importance Risk: Greedy Memorization
 
-Boosting models rely heavily on **single metadata features**, especially:
-
-- `Minor Linker Version`
-
-This creates a **Single Point of Failure** where modifying only one field can bypass
-detection. Random Forest distributes importance across multiple features, offering
-better structural stability.
+Boosting models exhibit extreme dependence on a small number of metadata features, particularly Minor Linker Version. This creates a single point of failure where modifying only one header field can evade detection. Random Forest distributes importance across many features, making it more stable but still not immune to evasion.
 
 ---
 
 ## 🧨 Adversarial Mimicry Attack
 
-### Attack Method
+Attack methodology:  
+A malware sample initially detected by all models was modified by copying only the linker version metadata from the legitimate Windows calculator (calc.exe). The malicious payload remained unchanged.
 
-1. Select malware sample detected by all models
-2. Modify only PE header metadata
-3. Copy linker version values from `calc.exe`
-4. Keep malicious payload unchanged
+Results:  
+All models misclassified the modified malware as benign.
 
-### Results
+HistGradientBoosting — Benign (99.6% confidence)  
+LightGBM — Benign (99.3% confidence)  
+XGBoost — Benign (97.9% confidence)  
+Random Forest — Benign (62% confidence)
 
-All models misclassified malware as benign:
-
-| Model | Prediction | Confidence |
-|--------|-----------|--------|
-| HistGradientBoosting | Benign | 99.6% |
-| LightGBM | Benign | 99.3% |
-| XGBoost | Benign | 97.9% |
-| Random Forest | Benign | 62% |
-
-➡️ Random Forest showed uncertainty but still failed.
+Random Forest showed uncertainty but still failed, confirming that metadata-only analysis is fundamentally vulnerable.
 
 ---
 
-## ⚠️ Case Study — AnyDesk False Positive
+## ⚠️ Case Study: AnyDesk False Positive
 
-The legitimate remote tool **AnyDesk.exe** was classified as malware due to:
-
-- Outdated linker versions
-- High entropy from compression
-
-This highlights that metadata-only models detect **structural obfuscation patterns**, which
-may overlap between malware and legitimate privacy tools.
+The legitimate remote administration tool AnyDesk.exe was consistently classified as malware due to outdated linker versions and high entropy caused by compression. This shows that models detect structural obfuscation patterns, which may overlap between malware and legitimate privacy tools.
 
 ---
 
 ## 🧠 Conclusion
 
-Metadata-based ensemble learning provides:
+Metadata-based ensemble models provide fast and highly accurate malware detection on benchmark datasets, but they lack adversarial robustness. Even simple header manipulation can fully bypass detection. Therefore, PE metadata classifiers should never be used as standalone security solutions.
 
-- ⚡ High-speed scanning
-- 📈 Excellent benchmark accuracy
-
-But also:
-
-- ❌ Extremely weak adversarial robustness
-
-### ✅ Recommended Deployment
-
-Use these models strictly as:
-
-> 🚦 **High-speed pre-filtering layer**
-
-Must be combined with:
-
-- Byte-level N-gram analysis
-- Import Address Table hashing
-- Dynamic sandbox analysis
-
-for final verdicts in high-security environments.
+Recommended deployment:  
+Use metadata-based models strictly as a high-speed pre-filtering layer, combined with deeper content inspection methods such as byte-level n-gram analysis, Import Address Table hashing, and dynamic sandboxing.
 
 ---
 
 ## ▶️ How to Run
 
-### 1. Install Dependencies
+Install dependencies:
 
-```bash
-pip install -r requirements.txt
+pip install pefile scikit-learn xgboost lightgbm matplotlib pandas numpy
+
+Extract dataset:
+
+unzip Dataset.zip
+
+Train models:
+
+python Code/train_models.py
+
+Evaluate models:
+
+python Code/evaluate_models.py
+
+Run mimicry attack test:
+
+python Code/mimicry_attack.py
+
+---
+
+## 📁 Repository Structure
+
+Greedy-Memorization-Research/  
+├── Code/  
+│   ├── feature_extraction.py  
+│   ├── train_models.py  
+│   ├── evaluate_models.py  
+│   └── mimicry_attack.py  
+├── pkl_files/  
+│   └── saved_models.pkl  
+├── Dataset.zip  
+└── README.md  
+
+---
+
+## 📚 Citation
+
+Kostandy, J. (2026).  
+Greedy Memorization Creates Security Risks:  
+How Metadata Overfitting Enables Trivial Malware Evasion.  
+ITMO University.
+
+---
+
+## ⚠️ Disclaimer
+
+This repository is for academic research and educational purposes only. Do not perform malware analysis or evasion testing on systems you do not own or have explicit permission to test.
+
+---
+
+⭐ If you find this research useful, consider starring the repository.
